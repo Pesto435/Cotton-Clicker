@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cotton Clicker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        #game-container {
+            margin-top: 50px;
+        }
+
+        h1 {
+            font-size: 2em;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 1em;
+        }
+
+        p {
+            font-size: 1.2em;
+        }
+
+        #message {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <audio id="clickSound" src="file:///home/chronos/u-8ec69482b21baec6bc3a9ce260afbdb1a810b0a1/MyFiles/Game%20Sounds/dry-flowers-and-twigs-rustling-34133.mp3"></audio>
+    <audio id="cashSound" src="file:///home/chronos/u-8ec69482b21baec6bc3a9ce260afbdb1a810b0a1/MyFiles/Game%20Sounds/sound-effects-library-cash-register-sound.mp3"></audio>
+    <audio id="cottonGinSound" src="file:///home/chronos/u-8ec69482b21baec6bc3a9ce260afbdb1a810b0a1/MyFiles/Game%20Sounds/Cranking-Gears--Medium--www.fesliyanstudios.com.mp3"></audio>
+    <div id="game-container">
+        <h1>Cotton Clicker</h1>
+        <p id="cotton-plants-count">Cotton Plants: 100</p>
+        <button id="cotton-button">Pick Cotton</button>
+        <button id="unpick-cotton-button">Unpick Cotton (Requires: 1 Seeded Cotton)</button>
+        <p id="seeded-cotton-count">Seeded Cotton: 0 pounds</p>
+        <p id="seedless-cotton-count">Seedless Cotton: 0 pounds</p>
+        <p id="seeds-count">Seeds: 0</p>
+        <p id="money-count">Money: $0.00</p>
+        <p id="slave-count">Slaves: 0</p>
+        <button id="buy-cotton-gin">Buy Cotton Gin (Cost: $60)</button>
+        <button id="buy-thicker-clothes">Buy Thicker Clothes (Cost: $5.50)</button>
+        <button id="buy-slave">Buy Slave (Cost: $100)</button>
+        <button id="plant-seeds-button">Plant Seeds (Cost: 1 Seed)</button>
+        <button id="sell-cotton-button">Sell Seedless Cotton (10 cents per pound)</button>
+        <p id="timer">Time Left: 1:00</p>
+        <p id="message"></p>
+    </div>
+
+    <script>
+        let cotton = 0;
+        let seeds = 0;
+        let money = 0;
+        let seededCotton = 0;
+        let seedlessCotton = 0;
+        let cottonGins = 0;
+        let thickerClothes = false;
+        let cottonPlants = 100;
+        let slaves = 0;
+        let slavePickSpeedMultiplier = 1;
+        let slavePlantSpeedMultiplier = 1;
+        let cottonPerClick = 1;
+        let cottonPerSecond = 0;
+        let seedsPerClick = 2;
+        let seedsPerSecond = 0;
+        let cottonPerClickMultiplier = 1;
+        let cottonPerSecondMultiplier = 1;
+        let cottonNeeded = 30;
+        let timeLeft = 60;
+        let timerId;
+
+        const clickSound = new Audio('file:///home/chronos/u-8ec69482b21baec6bc3a9ce260afbdb1a810b0a1/MyFiles/Game%20Sounds/dry-flowers-and-twigs-rustling-34133.mp3');
+        const cashSound = new Audio('file:///home/chronos/u-8ec69482b21baec6bc3a9ce260afbdb1a810b0a1/MyFiles/Game%20Sounds/sound-effects-library-cash-register-sound.mp3');
+        const cottonGinSound = new Audio('file:///home/chronos/u-8ec69482b21baec6bc3a9ce260afbdb1a810b0a1/MyFiles/Game%20Sounds/Cranking-Gears--Medium--www.fesliyanstudios.com.mp3');
+        const cottonButton = document.getElementById('cotton-button');
+        const unpickCottonButton = document.getElementById('unpick-cotton-button');
+        const seededCottonCount = document.getElementById('seeded-cotton-count');
+        const seedlessCottonCount = document.getElementById('seedless-cotton-count');
+        const seedsCount = document.getElementById('seeds-count');
+        const moneyCount = document.getElementById('money-count');
+        const slaveCount = document.getElementById('slave-count');
+        const cottonPlantsCount = document.getElementById('cotton-plants-count');
+        const timerDisplay = document.getElementById('timer');
+        const message = document.getElementById('message');
+        const buyCottonGinButton = document.getElementById('buy-cotton-gin');
+        const buyThickerClothesButton = document.getElementById('buy-thicker-clothes');
+        const buySlaveButton = document.getElementById('buy-slave');
+        const plantSeedsButton = document.getElementById('plant-seeds-button');
+        const sellCottonButton = document.getElementById('sell-cotton-button');
+
+        cottonButton.addEventListener('click', () => {
+            if (cottonPlants > 0) {
+                cotton += cottonPerClick;
+                cottonPlants--;
+                seededCotton += 1;
+                updateCottonCount();
+                playClickSound();
+            } else {
+                showMessage("No more pickable cotton!");
+            }
+        });
+
+        unpickCottonButton.addEventListener('click', () => {
+            if (seededCotton >= 1) {
+                seededCotton -= 1;
+                seedlessCotton += 0.5;
+                seeds += 1;
+                updateCottonCount();
+            } else {
+                showMessage("Not enough seeded cotton!");
+            }
+        });
+
+        buyCottonGinButton.addEventListener('click', () => {
+            const cost = 60 + cottonGins * 10;
+            if (cotton >= cost) {
+                cotton -= cost;
+                cottonGins++;
+                cottonPerSecond += 25;
+                updateCottonCount();
+                updateCottonGins();
+                money -= cost;
+                updateMoneyCount();
+                playCashSound();
+            } else {
+                showMessage("Not enough money!");
+            }
+        });
+
+        buyThickerClothesButton.addEventListener('click', () => {
+            const cost = 5.5;
+            if (cotton >= cost && !thickerClothes) {
+                cotton -= cost;
+                thickerClothes = true;
+                updateCottonCount();
+                buyThickerClothesButton.disabled = true;
+                buyThickerClothesButton.textContent = "Thicker Clothes Owned";
+                money -= cost;
+                updateMoneyCount();
+                playCashSound();
+            } else if (thickerClothes) {
+                showMessage("You already have thicker clothes!");
+            } else {
+                showMessage("Not enough cotton!");
+            }
+        });
+
+        buySlaveButton.addEventListener('click', () => {
+            const cost = 100;
+            if (money >= cost) {
+                money -= cost;
+                slaves++;
+                updateSlaveCount();
+                updateMoneyCount();
+                playCashSound();
+            } else {
+                showMessage("Not enough money!");
+            }
+        });
+
+        plantSeedsButton.addEventListener('click', () => {
+            if (seeds >= 1) {
+                seeds -= 1;
+                cottonPlants += 4;
+                updateCottonCount();
+                showMessage("You planted cotton seeds. You can now pick more cotton!");
+                playCashSound();
+            } else {
+                showMessage("Not enough seeds!");
+            }
+        });
+
+        sellCottonButton.addEventListener('click', () => {
+            let totalEarned = seedlessCotton * 0.1;
+            money += totalEarned;
+            seedlessCotton = 0;
+            updateCottonCount();
+            showMessage(`You sold ${seedlessCotton.toFixed(2)} pounds of cotton for $${totalEarned.toFixed(2)}`);
+            updateMoneyCount();
+            playCashSound();
+        });
+
+        function updateCottonCount() {
+            seededCottonCount.textContent = `Seeded Cotton: ${Math.floor(seededCotton)} pounds`;
+            seedlessCottonCount.textContent = `Seedless Cotton: ${seedlessCotton.toFixed(2)} pounds`;
+            seedsCount.textContent = `Seeds: ${seeds}`;
+            cottonPlantsCount.textContent = `Cotton Plants: ${cottonPlants}`;
+        }
+
+        function updateSlaveCount() {
+            slaveCount.textContent = `Slaves: ${slaves}`;
+        }
+
+        function updateMoneyCount() {
+            moneyCount.textContent = `Money: $${money.toFixed(2)}`;
+        }
+
+        function updateCottonGins() {
+            buyCottonGinButton.textContent = `Buy Cotton Gin (Cost: $${60 + cottonGins * 10})`;
+        }
+
+        function updateTimer() {
+            if (timeLeft > 0) {
+                timeLeft--;
+                const minutes = Math.floor(timeLeft / 60);
+                let seconds = timeLeft % 60;
+                if (seconds < 10) {
+                    seconds = `0${seconds}`;
+                }
+                timerDisplay.textContent = `Time Left: ${minutes}:${seconds}`;
+
+                if (timeLeft % 30 === 0) {
+                    cotton += cottonGins * 25;
+                    seedlessCotton += cottonGins * 25;
+                    updateCottonCount();
+                }
+
+                cotton += cottonPerSecond;
+                seedlessCotton += cottonPerSecond;
+
+                // Slave action
+                if (slaves > 0) {
+                    let slavePickRate = Math.floor(slavePickSpeedMultiplier);
+                    let slavePlantRate = Math.floor(slavePlantSpeedMultiplier);
+
+                    if (slavePickRate > 0 && seededCotton >= slavePickRate) {
+                        cotton += slavePickRate;
+                        cottonPlants -= slavePickRate;
+                        seededCotton -= slavePickRate;
+                    }
+
+                    if (slavePlantRate > 0 && seeds >= slavePlantRate * 4) {
+                        seeds -= slavePlantRate * 4;
+                        cottonPlants += slavePlantRate * 4;
+                    }
+
+                    updateCottonCount();
+                    updateSlaveCount();
+                }
+
+                updateSeedsCount();
+                updateMoneyCount();
+            } else {
+                timeLeft = 60;
+            }
+        }
+
+        function showMessage(msg) {
+            message.textContent = msg;
+            setTimeout(() => {
+                message.textContent = '';
+            }, 3000);
+        }
+
+        function startTimer() {
+            timerId = setInterval(updateTimer, 1000);
+        }
+
+        function playClickSound() {
+            clickSound.play();
+        }
+
+        function playCashSound() {
+            cashSound.play();
+        }
+
+        function playCottonGinSound() {
+            cottonGinSound.play();
+        }
+
+        startTimer();
+    </script>
+</body>
+</html>
